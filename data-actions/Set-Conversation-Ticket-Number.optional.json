@@ -1,0 +1,59 @@
+{
+  "name": "Set Conversation Ticket Number",
+  "integrationType": "purecloud-data-actions",
+  "actionType": "custom",
+  "config": {
+    "request": {
+      "requestUrlTemplate": "/api/v2/conversations/${input.conversationId}/participants/${input.participantId}/attributes",
+      "requestType": "PATCH",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "requestTemplate": "{\"attributes\": {\"ticketReturnCode\": \"$esc.jsonString(${input.ticketNumber})\"}}"
+    },
+    "response": {
+      "translationMap": {},
+      "translationMapDefaults": {},
+      "successTemplate": "{}"
+    }
+  },
+  "contract": {
+    "input": {
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "Set Conversation Ticket Number request",
+        "type": "object",
+        "required": [
+          "conversationId",
+          "participantId",
+          "ticketNumber"
+        ],
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Genesys Cloud conversation ID"
+          },
+          "participantId": {
+            "type": "string",
+            "description": "Participant to store the attribute on"
+          },
+          "ticketNumber": {
+            "type": "string",
+            "description": "Ticket number returned by Create Ticket"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "output": {
+      "successSchema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "Set Conversation Ticket Number response",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": true
+      }
+    }
+  },
+  "secure": false
+}

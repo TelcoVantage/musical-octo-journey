@@ -1,0 +1,56 @@
+{
+  "name": "Get Conversation Ticket Number",
+  "integrationType": "purecloud-data-actions",
+  "actionType": "custom",
+  "config": {
+    "request": {
+      "requestUrlTemplate": "/api/v2/conversations/${input.conversationId}",
+      "requestType": "GET",
+      "headers": {},
+      "requestTemplate": "${input.rawRequest}"
+    },
+    "response": {
+      "translationMap": {
+        "ticketNumbers": "$.participants[*].attributes.ticketReturnCode"
+      },
+      "translationMapDefaults": {
+        "ticketNumbers": "[]"
+      },
+      "successTemplate": "{\"ticketNumber\": ${successTemplateUtils.firstFromArray(\"${ticketNumbers}\", \"$esc.quote$esc.quote\")}}"
+    }
+  },
+  "contract": {
+    "input": {
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "Get Conversation Ticket Number request",
+        "type": "object",
+        "required": [
+          "conversationId"
+        ],
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Genesys Cloud conversation ID"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "output": {
+      "successSchema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "Get Conversation Ticket Number response",
+        "type": "object",
+        "properties": {
+          "ticketNumber": {
+            "type": "string",
+            "description": "Value of the participant attribute ticketReturnCode (empty when no ticket was created)"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "secure": false
+}

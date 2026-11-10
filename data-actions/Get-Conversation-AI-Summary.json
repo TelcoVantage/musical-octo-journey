@@ -1,0 +1,86 @@
+{
+  "name": "Get Conversation AI Summary",
+  "integrationType": "purecloud-data-actions",
+  "actionType": "custom",
+  "config": {
+    "request": {
+      "requestUrlTemplate": "/api/v2/conversations/${input.conversationId}/summaries",
+      "requestType": "GET",
+      "headers": {},
+      "requestTemplate": "${input.rawRequest}"
+    },
+    "response": {
+      "translationMap": {
+        "summaryText": "$.summary.text",
+        "editedText": "$.summary.editedSummary.text",
+        "reasonText": "$.summary.reason.text",
+        "resolutionText": "$.summary.resolution.text",
+        "followupText": "$.summary.followup.text",
+        "statusText": "$.summary.status"
+      },
+      "translationMapDefaults": {
+        "summaryText": "\"\"",
+        "editedText": "\"\"",
+        "reasonText": "\"\"",
+        "resolutionText": "\"\"",
+        "followupText": "\"\"",
+        "statusText": "\"\""
+      },
+      "successTemplate": "{\"summary\": ${summaryText}, \"editedSummary\": ${editedText}, \"reason\": ${reasonText}, \"resolution\": ${resolutionText}, \"followup\": ${followupText}, \"status\": ${statusText}}"
+    }
+  },
+  "contract": {
+    "input": {
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "Get Conversation AI Summary request",
+        "type": "object",
+        "required": [
+          "conversationId"
+        ],
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "Genesys Cloud conversation ID"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "output": {
+      "successSchema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "Get Conversation AI Summary response",
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "AI generated summary text"
+          },
+          "editedSummary": {
+            "type": "string",
+            "description": "Summary text as edited by the agent (empty when not edited)"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Contact reason"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Resolution"
+          },
+          "followup": {
+            "type": "string",
+            "description": "Follow-up actions"
+          },
+          "status": {
+            "type": "string",
+            "description": "Summary generation status"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "secure": false
+}

@@ -1,0 +1,26 @@
+{
+  "name": "Chat ACW - AI Summary to Ticket",
+  "description": "When after-conversation work completes on a chat in the ticket queue, start the workflow that posts the AI summary to the ticket.",
+  "topicName": "v2.detail.events.conversation.{id}.acw",
+  "target": {
+    "type": "Workflow",
+    "id": "REPLACE_WITH_WORKFLOW_ID",
+    "workflowTargetSettings": {
+      "dataFormat": "TopLevelPrimitives"
+    }
+  },
+  "matchCriteria": [
+    {
+      "jsonPath": "mediaType",
+      "operator": "Equal",
+      "value": "MESSAGE"
+    },
+    {
+      "jsonPath": "queueId",
+      "operator": "Equal",
+      "value": "REPLACE_WITH_QUEUE_ID"
+    }
+  ],
+  "delayBySeconds": 60,
+  "enabled": true
+}
