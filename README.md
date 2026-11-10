@@ -20,24 +20,29 @@ participant attribute  ---------------------+------------------>     Key        
 
 | File | What it is | How it gets into Genesys Cloud |
 |---|---|---|
+| `workflow/Chat - AI Summary to Ticket.i3WorkFlow` | The workflow, in Architect's export format | Architect GUI: Save > Import |
+| `workflow/set-data-action-ids.html` | Offline page that puts your data action IDs into the workflow file | Open in a browser, download the result |
 | `data-actions/Get-Conversation-Ticket-Number.json` | Reads the ticket number from the conversation | GUI import (Integrations > Actions > Import) |
 | `data-actions/Get-Conversation-AI-Summary.json` | Reads the AI summary (`GET /api/v2/conversations/{id}/summaries`) | GUI import |
 | `data-actions/Set-Conversation-Ticket-Number.optional.json` | Only needed if step 1 below does not work in your org | GUI import |
-| `workflow/chat-ai-summary-to-ticket.yaml` | The workflow, as Archy YAML | Converted to `.i3WorkFlow`, then GUI import |
-| `workflow/Build-I3WorkFlow.ps1` / `build-i3workflow.sh` | Turns the YAML into `Chat - AI Summary to Ticket.i3WorkFlow` | Run once on your PC |
 | `trigger/trigger.json` | The trigger definition | Typed into the Triggers GUI, or POSTed with API Explorer |
+| `tools/i3-generator/` | Source of the workflow and the script that builds the `.i3WorkFlow` | Not imported; only for changing the workflow |
 
-### Why the `.i3WorkFlow` is built on your side
+### About the `.i3WorkFlow` file
 
-An `.i3WorkFlow` file can only be produced by Architect or Archy while connected to an org:
-it embeds the IDs of the data actions it calls, and two of those actions do not exist in your
-org until you import them in step 2. The build script does that conversion with Archy
-(read-only against your org) and takes about a minute. If you would rather not run a script,
-the workflow is eight actions and the click-by-click build is in
-[Building the workflow by hand](#building-the-workflow-by-hand).
+It was produced by Genesys' own Architect Scripting SDK (the engine behind Architect and
+Archy), so it is in Architect's native export format. The build re-imports the file through
+the same engine and fails unless it validates with no errors or warnings.
 
-The YAML has been checked for syntax here but **not** run against a live org, so treat the
-first Archy run as the validation step.
+It has **not** been imported into a live org from here, so treat your first import as the
+real test.
+
+Architect links a workflow to its data actions **by ID**, not by name:
+
+- **Update Ticket (v8)** is referenced by the ID visible in your screenshot,
+  `custom_-_eeb9b6e4-05b2-4d0e-95a5-1139ac535f19`. It was read from a photo, so check it.
+- The two new data actions get their IDs from your org when you import them in step 2.
+  Step 4 puts those IDs into the file.
 
 ## Setup
 
@@ -83,34 +88,22 @@ Test each action with a real conversation ID before moving on (Setup > Test).
   "JournalUpdate": "$esc.jsonString(${input.JournalUpdate})"
   ```
 
-### 4. Build and import the workflow
+### 4. Import the workflow
 
-You need an OAuth client with the **Client Credentials** grant whose role has Architect > UI >
-View, Architect > Flow > View, Integrations > Integration > View and Integrations > Action > View.
+1. Download `workflow/set-data-action-ids.html` and open it in your browser (it runs
+   offline and sends nothing anywhere).
+2. Open each of the two new data actions in Admin and paste its address-bar URL (or just the
+   `custom_-_…` ID) into the matching box. Check the Update Ticket (v8) ID.
+3. Click **Download .i3WorkFlow**.
+4. Architect > Flows > **Workflow** > Add. Name it `Chat - AI Summary to Ticket`.
+5. In the new flow: arrow next to Save > **Import** > pick the downloaded file.
+6. **Save**, then **Publish**.
 
-Windows (PowerShell):
-
-```powershell
-cd workflow
-.\Build-I3WorkFlow.ps1 -ClientId <client id>
-```
-
-macOS / Linux:
-
-```bash
-cd workflow
-CLIENT_ID=<client id> CLIENT_SECRET=<secret> ./build-i3workflow.sh
-```
-
-Both default to `mypurecloud.com.au` and to the integration names `Genesys Cloud Data Actions`
-and `Rabobank ITSM API PROD`. If your Genesys Cloud integration has another name, pass
-`-GenesysIntegrationName "<name>"` (PowerShell) or `GENESYS_INTEGRATION_NAME="<name>"` (bash).
-
-The result is `workflow/dist/Chat - AI Summary to Ticket.i3WorkFlow`. Then:
-
-1. Architect > Flows > **Workflow** > Add. Name it `Chat - AI Summary to Ticket`.
-2. In the new flow: arrow next to Save > **Import** > pick the `.i3WorkFlow` file.
-3. **Save**, then **Publish**.
+**Shortcut without the helper page:** import
+`workflow/Chat - AI Summary to Ticket.i3WorkFlow` as it is. The steps *Get ticket number from
+conversation* and *Get AI summary* will then show "The selected data action could not be
+found". Open each one and pick the data action again; the input and output mappings stay in
+place.
 
 ### 5. Create the trigger
 
@@ -150,13 +143,12 @@ is right; the workflow is published.
 - **Transfers:** wrap-up completes once per agent, so a transferred chat adds one journal
   entry per agent.
 - **No summary / no ticket:** the workflow ends without calling the ticketing system.
+- **Data action timeouts** are left on Architect's suggested default.
 
-## Building the workflow by hand
+## What the workflow contains
 
-Architect > Flows > Workflow > Add, then in the Initial State:
-
-Variables (Data tab): `Flow.conversationId` — String, **Input to flow** ticked. The others
-are created as you select them.
+One state, `Initial State`. `Flow.conversationId` is a String marked **Input to flow**; the
+trigger fills it.
 
 | # | Action | Settings |
 |---|---|---|
@@ -165,8 +157,30 @@ are created as you select them.
 | 3 | Call Data Action | *Get Conversation AI Summary*. Input `conversationId` = `Flow.conversationId`. Outputs `summary` → `Flow.generatedSummary`, `editedSummary` → `Flow.editedSummary`, `reason` → `Flow.summaryReason`, `resolution` → `Flow.summaryResolution`, `followup` → `Flow.summaryFollowup`. Failure and Timeout paths: **End Workflow**. |
 | 4 | Update Data | String `Flow.summaryText` = `If(IsNotSetOrEmpty(Flow.editedSummary), Flow.generatedSummary, Flow.editedSummary)` |
 | 5 | Decision | `IsNotSetOrEmpty(Flow.summaryText)`. Yes path: **End Workflow**. |
-| 6 | Update Data | String `Flow.journalText` = the `Append(...)` expression from the YAML (search for `Build journal text`). |
+| 6 | Update Data | String `Flow.journalText` = summary, then reason, resolution and follow-up when present, then the conversation ID. |
 | 7 | Call Data Action | *Update Ticket (v8)*. `Key` = `Flow.ticketNumber`, `JournalUpdate` = `Flow.journalText`. |
 | 8 | End Workflow | |
 
-Save and Publish, then continue with step 5.
+## Changing the workflow
+
+The workflow is defined in `tools/i3-generator/flow.js`. To rebuild the import file and the
+helper page after editing it (Node.js 18 or later):
+
+```bash
+cd tools/i3-generator
+npm install
+npm run generate
+```
+
+To bake real IDs or other integration names straight into the file:
+
+```bash
+npm run generate -- --get-ticket-id=custom_-_... --get-summary-id=custom_-_... \
+  --update-ticket-id=custom_-_... --genesys-integration="Genesys Cloud Data Actions" \
+  --ticket-integration="Rabobank ITSM API PROD"
+```
+
+The generator runs offline and needs no credentials: `org-stub.js` answers the few API calls
+the SDK makes locally. The contracts of the two new data actions are read from
+`data-actions/*.json`; the contract of Update Ticket (v8) (inputs `Key` and `JournalUpdate`,
+no outputs) is written in `generate.js`.

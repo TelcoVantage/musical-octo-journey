@@ -1,0 +1,11 @@
+{
+  "name": "i3-generator",
+  "private": true,
+  "description": "Generates the Architect import file (.i3WorkFlow) for the chat AI summary workflow.",
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "purecloud-flow-scripting-api-sdk-javascript": "0.71.1"
+  }
+}
