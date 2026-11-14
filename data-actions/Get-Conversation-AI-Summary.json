@@ -11,22 +11,34 @@
     },
     "response": {
       "translationMap": {
-        "summaryText": "$.summary.text",
-        "editedText": "$.summary.editedSummary.text",
-        "reasonText": "$.summary.reason.text",
-        "resolutionText": "$.summary.resolution.text",
-        "followupText": "$.summary.followup.text",
-        "statusText": "$.summary.status"
+        "sessionText": "$.sessionSummaries[*].text",
+        "conversationText": "$.summary.text",
+        "sessionEdited": "$.sessionSummaries[*].editedSummary.text",
+        "conversationEdited": "$.summary.editedSummary.text",
+        "sessionReason": "$.sessionSummaries[*].reason.text",
+        "conversationReason": "$.summary.reason.text",
+        "sessionResolution": "$.sessionSummaries[*].resolution.text",
+        "conversationResolution": "$.summary.resolution.text",
+        "sessionFollowup": "$.sessionSummaries[*].followup.text",
+        "conversationFollowup": "$.summary.followup.text",
+        "sessionStatus": "$.sessionSummaries[*].status",
+        "conversationStatus": "$.summary.status"
       },
       "translationMapDefaults": {
-        "summaryText": "\"\"",
-        "editedText": "\"\"",
-        "reasonText": "\"\"",
-        "resolutionText": "\"\"",
-        "followupText": "\"\"",
-        "statusText": "\"\""
+        "sessionText": "[]",
+        "conversationText": "\"\"",
+        "sessionEdited": "[]",
+        "conversationEdited": "\"\"",
+        "sessionReason": "[]",
+        "conversationReason": "\"\"",
+        "sessionResolution": "[]",
+        "conversationResolution": "\"\"",
+        "sessionFollowup": "[]",
+        "conversationFollowup": "\"\"",
+        "sessionStatus": "[]",
+        "conversationStatus": "\"\""
       },
-      "successTemplate": "{\"summary\": ${summaryText}, \"editedSummary\": ${editedText}, \"reason\": ${reasonText}, \"resolution\": ${resolutionText}, \"followup\": ${followupText}, \"status\": ${statusText}}"
+      "successTemplate": "{\"summary\": ${successTemplateUtils.firstFromArray(\"${sessionText}\", \"${conversationText}\")}, \"editedSummary\": ${successTemplateUtils.firstFromArray(\"${sessionEdited}\", \"${conversationEdited}\")}, \"reason\": ${successTemplateUtils.firstFromArray(\"${sessionReason}\", \"${conversationReason}\")}, \"resolution\": ${successTemplateUtils.firstFromArray(\"${sessionResolution}\", \"${conversationResolution}\")}, \"followup\": ${successTemplateUtils.firstFromArray(\"${sessionFollowup}\", \"${conversationFollowup}\")}, \"status\": ${successTemplateUtils.firstFromArray(\"${sessionStatus}\", \"${conversationStatus}\")}}"
     }
   },
   "contract": {
