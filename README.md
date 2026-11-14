@@ -127,8 +127,9 @@ The queue ID is the GUID in the address bar when the queue is open in Admin.
 ### 6. Test
 
 1. Take a chat on the queue, click **Create ticket**, end the chat and complete wrap-up.
-2. About a minute later the ticket journal should contain
-   `Genesys Cloud AI summary: ... | Reason: ... | Resolution: ... | Conversation ID: ...`.
+2. About a minute later the ticket journal should contain a note headed
+   **Genesys Cloud AI summary**, with the summary on separate lines and the conversation ID
+   at the end.
 
 If nothing arrives, check in this order: the attribute from step 1 exists; each data action
 returns data in its Test tab for that conversation ID; the trigger is Active and its queue ID
@@ -143,6 +144,9 @@ is right; the workflow is published.
 - **Transfers:** wrap-up completes once per agent, so a transferred chat adds one journal
   entry per agent.
 - **No summary / no ticket:** the workflow ends without calling the ticketing system.
+- **Note formatting:** the ticketing system shows notes as HTML, so the workflow turns the
+  summary's line breaks into `<br>` tags and makes the heading bold. Without that the note
+  is one long paragraph.
 - **Data action timeouts** are left on Architect's suggested default.
 
 ## What the workflow contains
@@ -157,7 +161,7 @@ trigger fills it.
 | 3 | Call Data Action | *Get Conversation AI Summary*. Input `conversationId` = `Flow.conversationId`. Outputs `summary` → `Flow.generatedSummary`, `editedSummary` → `Flow.editedSummary`, `reason` → `Flow.summaryReason`, `resolution` → `Flow.summaryResolution`, `followup` → `Flow.summaryFollowup`. Failure and Timeout paths: **End Workflow**. |
 | 4 | Update Data | String `Flow.summaryText` = `If(IsNotSetOrEmpty(Flow.editedSummary), Flow.generatedSummary, Flow.editedSummary)` |
 | 5 | Decision | `IsNotSetOrEmpty(Flow.summaryText)`. Yes path: **End Workflow**. |
-| 6 | Update Data | String `Flow.journalText` = summary, then reason, resolution and follow-up when present, then the conversation ID. |
+| 6 | Update Data | String `Flow.journalText` = a bold heading, the summary with its line breaks turned into `<br>`, then reason, resolution and follow-up when present, then the conversation ID. |
 | 7 | Call Data Action | *Update Ticket (v8)*. `Key` = `Flow.ticketNumber`, `JournalUpdate` = `Flow.journalText`. |
 | 8 | End Workflow | |
 

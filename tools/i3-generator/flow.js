@@ -57,13 +57,15 @@ module.exports = async function buildFlow(scripting, ids) {
   const noSummary = actions.addActionDecision(state, 'No summary available?', 'IsNotSetOrEmpty(Flow.summaryText)');
   end(noSummary.outputYes, 'End - no summary');
 
-  // 5. Text that goes into the ticket journal.
+  // 5. Text that goes into the ticket journal. The ticketing system shows notes as HTML, so line breaks in the
+  //    summary are turned into <br> tags; without that the note is one long paragraph.
   actions.addActionUpdateData(state, 'Build journal text').addUpdateDataStatement(string, v.journalText,
-    'Append("Genesys Cloud AI summary: ", Flow.summaryText, ' +
-    'If(IsNotSetOrEmpty(Flow.summaryReason), "", Append(" | Reason: ", Flow.summaryReason)), ' +
-    'If(IsNotSetOrEmpty(Flow.summaryResolution), "", Append(" | Resolution: ", Flow.summaryResolution)), ' +
-    'If(IsNotSetOrEmpty(Flow.summaryFollowup), "", Append(" | Follow-up: ", Flow.summaryFollowup)), ' +
-    '" | Conversation ID: ", Flow.conversationId)');
+    'Append("<b>Genesys Cloud AI summary</b><br><br>", ' +
+    'Replace(Replace(Flow.summaryText, "\\r", ""), "\\n", "<br>"), ' +
+    'If(IsNotSetOrEmpty(Flow.summaryReason), "", Append("<br><br><b>Reason:</b> ", Flow.summaryReason)), ' +
+    'If(IsNotSetOrEmpty(Flow.summaryResolution), "", Append("<br><br><b>Resolution:</b> ", Flow.summaryResolution)), ' +
+    'If(IsNotSetOrEmpty(Flow.summaryFollowup), "", Append("<br><br><b>Follow-up:</b> ", Flow.summaryFollowup)), ' +
+    '"<br><br>Conversation ID: ", Flow.conversationId)');
 
   // 6. Post it to the ticket.
   const updateTicket = actions.addActionCallData(state, 'Update ticket with AI summary');
