@@ -1,95 +1,93 @@
 # Script panel redesign
 
-Design only. Nothing here changes a variable, an action or the Submit button's behaviour.
+`Chat Ticket Panel.script` is an agent script you can import into Genesys Cloud. It carries the
+new design and the script's variables. It does **not** carry the steps inside the Create Ticket
+action; you add those by hand after importing (see below).
 
 ![Mockup of the redesigned script panel](mockup.png)
 
-The mockup is a drawing of the target, not a screenshot from Genesys. It uses only things the
-Script Editor can do: container background colours, padding and margins, fixed sizes, and text
-size, weight and colour. There are no rounded corners or shadows.
+The mockup is a drawing of the target, not a screenshot from Genesys.
 
-## Colours
+## Read this first
 
-| Use | Hex |
+- **It imports as a new script.** Your current script is not touched and stays live until you
+  switch over.
+- **It has not been imported into a live org.** The file's structure was checked against a
+  sample script export published by Genesys and against the Script Editor's own source code.
+  Your first import is the real test.
+- **The Create Ticket action is empty.** Its three steps point at data actions by ID, and those
+  IDs and some of the step settings could not be read from photos.
+
+## Import
+
+1. Admin > Contact Center > **Scripts** > **Import**, and choose `Chat Ticket Panel.script`.
+2. Open the new script **Chat Ticket Panel**. It has one page, **Chat Page**, with the design
+   in the mockup.
+
+## Finish the back end
+
+Open your current script in a second browser tab and copy the settings across.
+
+### 1. Create Ticket action
+
+In the new script open the custom action **Create Ticket** (the button already calls it) and
+add the same steps your current script has:
+
+| # | Step | Notes |
+|---|---|---|
+| 1 | Data Actions.Execute Data Action — **Create Ticket (v8)** | Same inputs and outputs as today. |
+| 2 | **Wait Until** `ticketReturnCode` Equals `0` | Inside it: Execute Data Action — **Insert Data Table Row (Chat Logs)**. |
+| 3 | Data Actions.Execute Data Action — **Set Conversation Ticket Number** | `conversationId` = `{{Scripter.Interaction ID}}`, `participantId` = `{{Scripter.Customer Participant ID}}`, `ticketNumber` = `{{InteractionId}}`. |
+
+### 2. Variables
+
+The file creates these. Check each against your current script and correct anything that
+differs; only `InteractionId` was visible in full.
+
+| Variable | Type | Input | Output | Default |
+|---|---|---|---|---|
+| `assetId` | String | on | off | empty |
+| `email` | String | on | off | empty |
+| `fullname` | String | on | off | empty |
+| `InteractionId` | String | on | on | empty |
+| `location` | String | on | off | empty |
+| `ticketDescription` | String | off | off | empty |
+| `ticketReturnCode` | Number | off | off | `0` |
+| `ticketStatus` | String | off | off | empty |
+
+- **`ticketReturnCode` default:** step 2 waits for this to equal `0`. If your current script
+  uses a different default, set the same one here, otherwise the wait ends immediately.
+- **The dynamic True/False variable** (its name starts `ticketCreati…`) is not in the file,
+  because its full name and formula were not visible. Add it if anything on the page needs it.
+
+### 3. Switch over
+
+1. Publish the new script.
+2. Point whatever opens the script today at the new one: the **Set Screen Pop** action in the
+   message flow, or the queue's default script. Re-map the script inputs (`fullname`, `email`,
+   `location`, `assetId`, `InteractionId`).
+3. Run a test chat: create a ticket and confirm the ticket number shows and the AI summary
+   still lands on the ticket.
+
+## What the design uses
+
+| Part | Settings |
 |---|---|
-| Header background | `#1B2A49` |
-| Header sub-line text | `#B8C4D9` |
-| Main text | `#1F2933` |
-| Labels and section title | `#627D98` |
-| Status text | `#486581` |
-| Card background | `#F5F7FA` |
-| Card border | `#D9E2EC` |
-| Divider line | `#E4E7EB` |
-| Text area border | `#BCCCDC` |
-| Button background | `#1A56DB` |
-| White | `#FFFFFF` |
+| Header band | Background `#1B2A49`. Name 15 pt bold white. Second line 10 pt `#B8C4D9`. |
+| Customer details | Title 9 pt bold `#627D98`. Label 10 pt `#627D98`, 110 px wide. Value 11 pt `#1F2933`. Each row has a 1 px bottom border `#E4E7EB`. |
+| Create ticket card | Background `#F5F7FA`, 1 px border `#D9E2EC`, padding 16. Heading 12 pt bold. Multi-line input 120 px high, labelled "Description". |
+| Button | Background `#1A56DB`, white bold 10 pt text, 130 × 36 px. |
+| Status line | `{{ticketStatus}}`, 10 pt `#486581`. |
+| Ticket number box | Background `#F5F7FA`, 1 px border `#D9E2EC`. Number 14 pt bold. |
 
-Font: leave the editor's default family; only sizes, weights and colours change.
+Font sizes in the Script Editor are in points.
 
-## Structure
+## Changing the design
 
-Everything sits in the page's root vertical container. Set the root to width **Stretch**,
-background `#FFFFFF`, padding `0`.
+The file is generated by `tools/script-generator/generate.js` (Node.js, no dependencies):
 
-Indentation shows what goes inside what.
-
-```
-Root (vertical)
-├─ Header (vertical container)
-│   ├─ Text  {{fullname}}
-│   └─ Text  Messaging · {{Scripter.Queue Name}}
-├─ Customer details (vertical container)
-│   ├─ Text  CUSTOMER DETAILS
-│   ├─ Row (horizontal container)   Text "Full name"  +  Text {{fullname}}
-│   ├─ Divider
-│   ├─ Row (horizontal container)   Text "Email"      +  Text {{email}}
-│   ├─ Divider
-│   ├─ Row (horizontal container)   Text "Location"   +  Text {{location}}
-│   └─ Divider
-├─ Create ticket card (vertical container)
-│   ├─ Text  Create ticket
-│   ├─ Text  Description
-│   ├─ Text area  (ticketDescription — the existing one)
-│   └─ Button     (the existing Submit button)
-├─ Text  {{ticketStatus}}          (the existing one)
-└─ Ticket number (horizontal container)
-    ├─ Text  Ticket number
-    └─ Text  {{InteractionId}}     (the existing one)
+```bash
+node tools/script-generator/generate.js
 ```
 
-## Settings per component
-
-| Component | Settings |
-|---|---|
-| **Header** container | Width Stretch. Background `#1B2A49`. Padding 18 top/bottom, 20 left/right. |
-| `{{fullname}}` (header) | Size 20, bold, colour `#FFFFFF`. |
-| `Messaging · {{Scripter.Queue Name}}` | Size 13, colour `#B8C4D9`. Margin top 4. |
-| **Customer details** container | Width Stretch. Padding 20 top, 20 left/right, 6 bottom. |
-| `CUSTOMER DETAILS` | Size 12, bold, colour `#627D98`. Margin bottom 6. Type it in capitals. |
-| Each **Row** container | Horizontal. Width Stretch. Padding 11 top/bottom. |
-| Row label (`Full name`, `Email`, `Location`) | Width 110 pixels. Size 13, colour `#627D98`. No colon. |
-| Row value (`{{fullname}}`, `{{email}}`, `{{location}}`) | Size 15, colour `#1F2933`. |
-| **Divider** | An empty container: width Stretch, height 1 pixel, background `#E4E7EB`. |
-| **Create ticket card** container | Width Stretch. Margin 14 top, 20 left/right. Padding 16. Background `#F5F7FA`. Border 1, colour `#D9E2EC`. |
-| `Create ticket` (heading) | Size 16, bold, colour `#1F2933`. |
-| `Description` (label) | Size 13, colour `#627D98`. Margin 12 top, 6 bottom. |
-| Text area | Width Stretch, height 110 pixels. Background `#FFFFFF`. Border 1, colour `#BCCCDC`. Size 14. |
-| Button | Text `Create ticket`. Background `#1A56DB`, text `#FFFFFF`, bold, size 14. Margin top 12. Width Auto. |
-| `{{ticketStatus}}` | Size 14, colour `#486581`. Margin 14 top, 20 left/right. |
-| **Ticket number** container | Horizontal. Width Stretch. Margin 10 top, 20 left/right, 20 bottom. Padding 14 top/bottom, 16 left/right. Background `#F5F7FA`. Border 1, colour `#D9E2EC`. |
-| `Ticket number` (label) | Width 110 pixels. Size 13, colour `#627D98`. |
-| `{{InteractionId}}` | Size 18, bold, colour `#1F2933`. |
-
-## Keeping the back end untouched
-
-- **Move, don't recreate** the text area, the button, `{{ticketStatus}}` and
-  `{{InteractionId}}`. Drag the existing components into the new containers so their variable
-  bindings and the button's click action stay exactly as they are.
-- Renaming the button from `Submit` to `Create ticket` changes its label only.
-- The header sub-line uses `{{Scripter.Queue Name}}`, a built-in variable. Leave that line out
-  if you don't want it.
-- The "User's inputs" heading is replaced by the header band and the `CUSTOMER DETAILS` title.
-
-If a setting isn't where you expect, look under the component's **Layout** section for width,
-height and margin, and under **Appearance** or **Font** for colours, borders and text. The exact
-section names were written from memory of the editor.
+Colours, sizes and layout are near the bottom of that file.
