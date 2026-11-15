@@ -26,7 +26,9 @@ participant attribute  ---------------------+------------------>     Key        
 | `data-actions/Get-Conversation-AI-Summary.json` | Reads the AI summary (`GET /api/v2/conversations/{id}/summaries`) | GUI import |
 | `data-actions/Set-Conversation-Ticket-Number.optional.json` | Only needed if step 1 below does not work in your org | GUI import |
 | `trigger/trigger.json` | The trigger definition | Typed into the Triggers GUI, or POSTed with API Explorer |
-| `tools/i3-generator/` | Source of the workflow and the script that builds the `.i3WorkFlow` | Not imported; only for changing the workflow |
+| `chat-bot/` | Digital bot flow that greets the customer and collects the issue before queueing; see `chat-bot/README.md` | Architect GUI: Save > Import |
+| `script-panel/` | Redesigned agent script; see `script-panel/README.md` | Scripts > Import |
+| `tools/i3-generator/` | Source of the workflow and the bot flow, and the scripts that build the import files | Not imported; only for changing the flows |
 
 ### About the `.i3WorkFlow` file
 

@@ -13,6 +13,7 @@ const ORG = { id: '00000000-0000-4000-8000-000000000001', name: 'local-stub' };
 const DIVISION = { id: '00000000-0000-4000-8000-000000000003', name: 'Home', homeDivision: true };
 // Action types the workflow uses; the SDK needs to be told they are available in workflows.
 const WORKFLOW_ACTIONS = ['DataAction', 'DecisionAction', 'UpdateVariableAction', 'EndWorkflowAction'];
+const available = (flowTypes) => Object.fromEntries(flowTypes.map((t) => [t, { id: t, isAvailable: true }]));
 
 const ERROR_SCHEMA = (() => {
   const s = { type: 'string' }, list = { type: 'array', items: { type: 'string' } };
@@ -22,7 +23,16 @@ const ERROR_SCHEMA = (() => {
     'details.fieldName': list, 'details.entityId': list, 'details.entityName': list } };
 })();
 
-function createOrgStub(dataActions) {
+// options.flowTypes: flow types to report as available (default: workflow).
+// options.actions:   action types to report as available in those flow types.
+// options.functions: expression functions that need server confirmation, as { functionId: { overloadSignature: [flowTypes] | null } }.
+function createOrgStub(dataActions, options = {}) {
+  const flowTypes = options.flowTypes || ['workflow'];
+  const actionTypes = options.actions || WORKFLOW_ACTIONS;
+  const functions = options.functions
+    ? Object.fromEntries(Object.entries(options.functions).map(([fn, overloads]) => [fn, { id: fn, overloads: Object.fromEntries(
+      Object.entries(overloads).map(([sig, types]) => [sig, { id: sig, flowTypes: available((types || flowTypes).filter((t) => flowTypes.includes(t))) }])) }]))
+    : undefined;
   const action = (id) => {
     const a = dataActions[id];
     if (!a) return null;
@@ -50,8 +60,9 @@ function createOrgStub(dataActions) {
     if (p === '/api/v2/architect/capabilities') return {
       expansions: { flowTypes: {} },
       featureConfigs: { placeholder: { id: 'placeholder', isAvailable: false } },
-      flowTypes: { workflow: { id: 'workflow', isAvailable: true } },
-      actions: Object.fromEntries(WORKFLOW_ACTIONS.map((id, i) => [id, { id, flowTypes: { workflow: { id: 'workflow', isAvailable: true } },
+      flowTypes: available(flowTypes),
+      ...(functions ? { functions } : {}),
+      actions: Object.fromEntries(actionTypes.map((id, i) => [id, { id, flowTypes: available(flowTypes),
         flowTypesDeprecated: {}, categoryInfo: { categoryId: 'data', displayIndex: i + 1 } }])) };
     if (p === '/api/v2/telephony/providers/edges/timezones') return page([{ id: 'UTC', name: 'UTC', offset: 0 }]);
     if (p === '/api/v2/notifications/channels') return { status: 404, body: { message: 'not available in stub', status: 404 } };
