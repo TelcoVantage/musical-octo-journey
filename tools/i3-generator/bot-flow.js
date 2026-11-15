@@ -4,19 +4,28 @@
 // What the bot does:
 //   1. Greets the customer by name (asks for the name when the message flow did not supply one).
 //   2. Asks what they need help with, as quick-reply buttons.
-//   3. If a self-help guide is set for that topic, sends it and asks whether it solved the problem.
-//   4. Otherwise asks for a short description.
-//   5. Hands back to the message flow with the answers, so the agent script can show them.
+//   3. Asks for a short description.
+//   4. Hands back to the message flow with the answers, so the agent script can show them.
 
 // Topics offered as quick replies. `value` is what is stored; `label` is what the customer sees.
-// `guide` names the flow variable that holds that topic's self-help text (empty = no self-help).
 const TOPICS = [
-  { value: 'password', label: 'Password or MFA', guide: 'guidePasswordMfa' },
-  { value: 'email', label: 'Email or Teams', guide: 'guideEmailTeams' },
-  { value: 'hardware', label: 'Laptop or hardware', guide: 'guideHardware' },
-  { value: 'software', label: 'Software or access', guide: 'guideSoftware' },
-  { value: 'other', label: 'Something else', guide: null }
+  { value: 'password', label: 'Password or MFA' },
+  { value: 'email', label: 'Email or Teams' },
+  { value: 'hardware', label: 'Laptop or hardware' },
+  { value: 'software', label: 'Software or access' },
+  { value: 'other', label: 'Something else' }
 ];
+
+// Wording, in one place.
+const TEXT = {
+  welcomeLead: 'Hi ',
+  welcomeTail: ', welcome to IT Live Chat. I have two quick questions so we can get you to the right person.',
+  welcomeNoName: 'Welcome to IT Live Chat. I have a few quick questions so we can get you to the right person.',
+  askName: 'First, what is your name?',
+  askTopic: 'What do you need help with today?',
+  askDescription: 'Please describe the problem in a sentence or two. Include any error message you see.',
+  handOver: 'Thanks. I am connecting you to an IT agent now, and they can see what you have told me.'
+};
 
 const q = (text) => JSON.stringify(text);                       // Architect string literal
 const chain = (pairs, fallback) => pairs.reduceRight((rest, [test, value]) => `If(${test}, ${value}, ${rest})`, fallback);
@@ -31,11 +40,11 @@ module.exports = async function buildBotFlow(scripting, language) {
 
   const flow = await flows.createFlowDigitalBotAsync(
     'Workplace Support - Chat Assistant',
-    'Greets the customer, asks what they need help with, offers self-help where a guide is set, collects a short ' +
-      'description, and hands the answers back to the inbound message flow for the agent script.',
+    'Greets the customer, asks what they need help with, collects a short description, and hands the answers ' +
+      'back to the inbound message flow for the agent script.',
     language, undefined, undefined, nlu);
 
-  const string = flow.dataTypes.string, boolean = flow.dataTypes.boolean;
+  const string = flow.dataTypes.string;
   const v = (name, type, opts = {}) => {
     const variable = flow.addVariable('Flow.' + name, type);
     if (opts.input) variable.isInput = true;
@@ -50,14 +59,8 @@ module.exports = async function buildBotFlow(scripting, language) {
   v('issueCategory', string, { output: true, description: 'Topic the customer picked, for example "Password or MFA".' });
   v('issueDescription', string, { output: true, description: 'What the customer typed when asked to describe the issue.' });
   v('ticketDescription', string, { output: true, description: 'Topic and description in one line, ready to pre-fill the ticket description.' });
-  v('selfHelpResolved', boolean, { output: true, description: 'True when the customer said the self-help guide solved the problem.' });
-  // Working variables.
+  // Working variable.
   v('topic', string);
-  v('guideText', string);
-  // Self-help text per topic. Leave a value empty to skip self-help for that topic.
-  for (const t of TOPICS.filter((x) => x.guide)) {
-    v(t.guide, string, { description: `Self-help message for "${t.label}". Include the guide link. Leave empty to skip self-help for this topic.` });
-  }
 
   // One retry is enough: after that the bot hands over to an agent instead of repeating itself.
   flow.userInputSettings.noMatchesMax.setLiteralInt(1);
@@ -71,22 +74,20 @@ module.exports = async function buildBotFlow(scripting, language) {
   };
 
   // 0. Defaults.
-  update(state, 'Set defaults', [[boolean, 'selfHelpResolved', 'false'], [string, 'topic', q('other')]]);
-  // Self-help text per topic, all in one place. Empty = no self-help for that topic.
-  update(state, 'Self-help guides (edit here)', TOPICS.filter((t) => t.guide).map((t) => [string, t.guide, q(t.guideText || '')]));
+  update(state, 'Set defaults', [[string, 'topic', q('other')]]);
 
   // 1. Name.
   const hasName = A.addActionDecision(state, 'Name supplied?', '!IsNotSetOrEmpty(Flow.fullname)');
-  say(hasName.outputYes, 'Welcome by name', `Append("Welcome, ", Flow.fullname, ", to IT Live Chat.")`);
-  say(hasName.outputNo, 'Welcome', q('Welcome to IT Live Chat.'));
+  say(hasName.outputYes, 'Welcome by name', `Append(${q(TEXT.welcomeLead)}, Flow.fullname, ${q(TEXT.welcomeTail)})`);
+  say(hasName.outputNo, 'Welcome', q(TEXT.welcomeNoName));
   const askName = A.addActionAskForSlot(hasName.outputNo, 'Ask for name');
   askName.setSlot('customerName');
-  askName.question.setExpression(q('Before we start, what is your name?'));
+  askName.question.setExpression(q(TEXT.askName));
   update(hasName.outputNo, 'Keep name', [[string, 'fullname', 'If(IsNotSetOrEmpty(Slot.customerName), "", Slot.customerName)']]);
 
   // 2. Topic.
   const menu = A.addActionDigitalMenu(state, 'Ask topic');
-  menu.question.setExpression(q('What do you need help with today?'));
+  menu.question.setExpression(q(TEXT.askTopic));
   for (const t of TOPICS) {
     const choice = menu.addChoice(t.value);
     choice.label.setLiteralString(t.label);
@@ -100,36 +101,24 @@ module.exports = async function buildBotFlow(scripting, language) {
 
   update(state, 'Work out topic', [
     [string, 'topic', 'If(IsNotSetOrEmpty(Flow.topic), "other", Flow.topic)'],
-    [string, 'issueCategory', chain(TOPICS.map((t) => [`Flow.topic == ${q(t.value)}`, q(t.label)]), q('Something else'))],
-    [string, 'guideText', chain(TOPICS.filter((t) => t.guide).map((t) => [`Flow.topic == ${q(t.value)}`, 'Flow.' + t.guide]), '""')]
+    [string, 'issueCategory', chain(TOPICS.map((t) => [`Flow.topic == ${q(t.value)}`, q(t.label)]), q('Something else'))]
   ]);
 
-  // 3. Self-help, only when a guide is set for the topic.
-  const hasGuide = A.addActionDecision(state, 'Guide available?', '!IsNotSetOrEmpty(Flow.guideText)');
-  say(hasGuide.outputYes, 'Send guide', 'Flow.guideText');
-  const solved = A.addActionAskForBoolean(hasGuide.outputYes, 'Did the guide help?');
-  solved.question.setExpression(q('Did that solve the problem?'));
-  const yes = solved.getOutputByName('Yes');
-  update(yes, 'Mark resolved', [[boolean, 'selfHelpResolved', 'true']]);
-  A.addActionSetParticipantData(yes, 'Record self-help result').addAttributeNameValuePair(q('selfHelpResolved'), q('true'));
-  say(yes, 'Goodbye', q('Glad that helped. If you need anything else, start a new chat any time.'));
-  A.addActionExitBotFlow(yes, 'Exit - solved by self-help');
-
-  // 4. Description.
+  // 3. Description.
   const describe = A.addActionAskForSlot(state, 'Ask for description');
   describe.setSlot('issueDescription');
-  describe.question.setExpression(q('Please describe the problem in a sentence or two. Include any error message you see.'));
+  describe.question.setExpression(q(TEXT.askDescription));
 
   update(state, 'Prepare details for agent', [
     [string, 'issueDescription', 'If(IsNotSetOrEmpty(Slot.issueDescription), "", Slot.issueDescription)'],
     [string, 'ticketDescription', 'If(IsNotSetOrEmpty(Flow.issueDescription), Flow.issueCategory, Append(Flow.issueCategory, ": ", Flow.issueDescription))']
   ]);
 
-  // 5. Hand over.
+  // 4. Hand over.
   const save = A.addActionSetParticipantData(state, 'Save details on conversation');
   save.addAttributeNameValuePair(q('issueCategory'), 'Flow.issueCategory');
   save.addAttributeNameValuePair(q('issueDescription'), 'Flow.issueDescription');
-  say(state, 'Hand over message', q('Thanks. I am connecting you to an IT agent now, and they can see what you have told me.'));
+  say(state, 'Hand over message', q(TEXT.handOver));
   A.addActionExitBotFlow(state, 'Exit - hand over to agent');
 
   return flow;

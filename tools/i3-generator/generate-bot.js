@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds chat-bot/Workplace Support - Chat Assistant (<language>).i3DigitalBotFlow with Genesys' own Architect
+// Builds chat-bot/Workplace Support - Chat Assistant.i3DigitalBotFlow with Genesys' own Architect
 // Scripting SDK, so the file is in Architect's native export format. Runs offline: see org-stub.js.
 //
 //   npm install && npm run generate-bot
@@ -9,10 +9,10 @@ const { createOrgStub } = require('./org-stub.js');
 const readFunctionTable = require('./function-table.js');
 
 const repo = path.join(__dirname, '..', '..');
-// One file per language: import the one that matches the inbound message flow's language.
-const LANGUAGES = [['englishAustralia', 'en-AU'], ['englishUnitedStates', 'en-US']];
-const ACTIONS = ['CommunicateAction', 'DigitalMenuAction', 'AskForSlotAction', 'AskForBooleanAction', 'SetAttributesAction',
-  'ExitBotFlowAction', 'DecisionAction', 'UpdateVariableAction'];
+// The bot's language must be one the inbound message flow supports.
+const LANGUAGES = [['englishAustralia', 'en-AU']];
+const ACTIONS = ['CommunicateAction', 'DigitalMenuAction', 'AskForSlotAction', 'SetAttributesAction', 'ExitBotFlowAction',
+  'DecisionAction', 'UpdateVariableAction'];
 
 const say = (text) => process.stdout.write(text + '\n');
 const decode = (content) => JSON.parse(decodeURIComponent(Buffer.from(content, 'base64').toString('binary')));
@@ -57,7 +57,7 @@ async function main() {
 
   fs.mkdirSync(path.join(repo, 'chat-bot'), { recursive: true });
   for (const { tag, content } of results) {
-    const file = path.join(repo, 'chat-bot', `Workplace Support - Chat Assistant (${tag}).i3DigitalBotFlow`);
+    const file = path.join(repo, 'chat-bot', 'Workplace Support - Chat Assistant.i3DigitalBotFlow');
     fs.writeFileSync(file, content);
     const flow = decode(content);
     say(`Wrote ${path.relative(repo, file)} (${content.length} bytes, language ${flow.defaultLanguage}, ${flow.variables.length} variables)`);
